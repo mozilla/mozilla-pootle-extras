@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n baseurl %}
+
+{% block title %}{{ block.super }}: {% trans "Verbatim Contributors" %}{% endblock %}
+
+{% block content %}
+<h2>Verbatim Contributors</h2>
+
+<ul>
+  {% for user in contributors %}
+  <li>{% if user.first_name or user.last_name %}
+        {{ user.first_name }} {{ user.last_name }}
+      {% else %}
+        {{ user.username }}
+      {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

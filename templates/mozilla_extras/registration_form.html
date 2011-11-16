@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load i18n baseurl %}
+
+{% block title %}{{ block.super }}: {% trans "Register" %}{% endblock %}
+
+{% block content %}
+<div id="register" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}">
+    <h2>{% trans "Register a New Pootle Account" %}</h2>
+    <p>{% trans "If you have Mozilla LDAP account, just"%} <a href='{{ "/accounts/login/"|l }}' title="{% trans "log in" %}">{% trans "log in" %}</a> {% trans "using it."%}</p>
+    <form method="post" action="" name="registerform" id="registerform">
+    {% if form.non_field_errors %}
+        {{ form.non_field_errors }}
+    {% endif %}
+    <p>
+        <label for="username">{% trans "Username" %}</label>
+        {{ form.username }}
+        {{ form.username.errors }}
+    </p>
+    <p>
+        <label for="username">{% trans "Displayname" %} {% trans "(optional, will be shown publicly)" %}</label>
+        {{ form.displayname }}
+        {{ form.displayname.errors }}
+    </p>
+    <p>
+        <label for="email">{% trans "Email Address" %}</label>
+        {{ form.email }}
+        {{ form.email.errors }}
+    </p>
+    <p>
+        <label for="password1">{% trans "Password" %}</label>
+        {{ form.password1 }}
+        {{ form.password1.errors }}
+    </p>
+    <p>
+        <label for="password2">{% trans "Password (again)" %}</label>
+        {{ form.password2 }}
+        {{ form.password2.errors }}
+    </p>
+    <p>
+       <label for="tos">{% trans "Terms of service" %}</label><br/>
+       {{ form.tos_license }}
+       {% blocktrans %}I accept that all my submissions will be licenced under the
+       <a href="http://creativecommons.org/licenses/by-sa/3.0/">Creative Commons Attribution Share-Alike Licence v3.0</a>
+       or any later version.
+       {% endblocktrans %}
+       {{ form.tos_license.errors }}<br/>
+       {{ form.tos_rules }}
+       {% blocktrans %}
+       I accept the <a href="https://wiki.mozilla.org/L10n/Localizer_Responsibilities">rules and responsibilities</a>
+       of being a Verbatim contributor.
+       {% endblocktrans %}
+       {{ form.tos_rules.errors }}<br/>
+    </p>
+    <p class="common-buttons-block submit">
+        <input type="submit" class="register" name="register" value="{% trans 'Register' %}" />
+    </p>
+</form>
+</div>
+
+<h2 class="loginlink">{% trans "Already have an account?" %}
+    <a href='{{ "/accounts/login/"|l }}' title="{% trans "Log In." %}">{% trans "Log In." %}</a>
+</h2>
+{% endblock %}
+
+{% block scripts_extra %}
+  <script>
+    $(document).ready(function () {
+        $("#id_username").focus();
+    });
+  </script>
+{% endblock scripts_extra %}
