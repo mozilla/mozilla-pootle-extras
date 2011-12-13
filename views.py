@@ -208,7 +208,7 @@ def verbatim_contributors(request,
         users = None
         for proj_id, user_ids in projectsmap.items():
             usersset = [_user_names[x] for x in user_ids]
-            users = sorted(usersset)
+            users = sorted(usersset, lambda x, y: cmp(x.lower(), y.lower()))
             try:
                 projectname = _project_names[proj_id]
             except KeyError:
