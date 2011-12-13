@@ -3,10 +3,14 @@
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.contrib.auth.models import User
-from pootle_profile.models import PootleProfile
-
+from pootle_statistics.models import Submission
+from pootle_translationproject.models import TranslationProject
+from pootle_project.models import Project
+from pootle_language.models import Language
+from pootle_app.models import Suggestion
 from registration.views import register as original_register
 from .forms import RegistrationForm
+
 
 def register(request, success_url=None,
              form_class=RegistrationForm,
@@ -21,93 +25,6 @@ def register(request, success_url=None,
       template_name=template_name,
       extra_context=extra_context
     )
-
-def verbatim_contributors(request,
-              template_name='mozilla_extras/verbatim-contributors.html'):
-    contributors = User.objects.all().order_by('first_name', 'last_name', 'username')
-    from collections import defaultdict; from pprint import pprint
-    lang_counts = defaultdict(int)
-    proj_counts = defaultdict(int)
-    from pootle_statistics.models import Submission
-    from pootle_project.models import Project
-    from pootle_language.models import Language
-    from pootle_app.models import Suggestion
-
-    _languages = {}
-    _language_map = {}
-    for language in Language.objects.all():
-        _languages[language.fullname] = defaultdict(set)
-        _language_map[language.id] = language.fullname
-
-    def lmap(id):
-        return _language_map[id]
-
-    EXCLUDED_PROJECT_NAMES = (
-      u"Testing, please don't work here",
-    )
-    _project_map = {}
-
-    for project in Project.objects.exclude(fullname__in=EXCLUDED_PROJECT_NAMES):
-        _project_map[project.id] = project.fullname
-
-    def pmap(id):
-        try:
-            return _project_map[id]
-        except KeyError:
-            raise Project.DoesNotExist(id)
-
-    def user_name(user):
-        name = ('%s %s' % (user.first_name, user.last_name)).strip()
-        if not name:
-            name = user.username
-        if 'test' in name:
-            print "WARNING"
-            print repr(name)
-            print repr(user.username)
-            print
-        return name
-
-
-    for profile in PootleProfile.objects.all().select_related('user'):#order_by('?')[:10]:
-        name = user_name(profile.user)
-
-        for s in profile.suggester.all().select_related('translation_project'):
-            tp = s.translation_project
-            try:
-                _languages[lmap(tp.language_id)][pmap(tp.project_id)].add(name)
-            except Project.DoesNotExist:
-                pass
-
-        for s in profile.reviewer.all().select_related('translation_project'):
-            tp = s.translation_project
-            try:
-                _languages[lmap(tp.language_id)][pmap(tp.project_id)].add(name)
-            except Project.DoesNotExist:
-                pass
-
-        for s in profile.submission_set.all().select_related('translation_project'):
-            tp = s.translation_project
-            try:
-                _languages[lmap(tp.language_id)][pmap(tp.project_id)].add(name)
-            except Project.DoesNotExist:
-                pass
-
-    contributors = []
-    for language, projectsmap in _languages.items():
-        projects = []
-        users = None
-        for projectname, usersset in projectsmap.items():
-            users = sorted(usersset)
-            projects.append((projectname, users))
-        if users:
-            contributors.append((language, projects))
-    contributors.sort()
-
-
-    print "# NODES", sum(len(users) for language, projects in contributors for name, users in projects)
-    return render_to_response(template_name,
-                              {'contributors': contributors},
-                              context_instance=RequestContext(request))
 
 
 def verbatim_contributors(request,
@@ -138,12 +55,6 @@ def verbatim_contributors(request,
       u'\'">,test \'">,test',
       u'testo\'"><',
     )
-
-    from pootle_statistics.models import Submission
-    from pootle_translationproject.models import TranslationProject
-    from pootle_project.models import Project
-    from pootle_language.models import Language
-    from pootle_app.models import Suggestion
 
     _user_names = {}  # user id -> name
     for user in (User.objects.exclude(username__in=EXCLUDED_USERNAMES)
@@ -219,7 +130,6 @@ def verbatim_contributors(request,
         if projects:
             contributors.append((language, projects))
     contributors.sort()
-#    print "# NODES", sum(len(users) for language, projects in contributors for name, users in projects)
     return render_to_response(template_name,
                               {'contributors': contributors},
                               context_instance=RequestContext(request))

@@ -3,6 +3,7 @@
 from django import forms
 from registration.forms import RegistrationForm as OriginalRegistrationForm
 
+
 class RegistrationForm(OriginalRegistrationForm):
     displayname = forms.CharField(
                                 max_length=150,
