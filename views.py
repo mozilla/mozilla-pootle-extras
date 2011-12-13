@@ -56,7 +56,7 @@ def verbatim_contributors(request,
       u'testo\'"><',
     )
 
-    _user_names = {}  # user id -> name
+    user_names = {}  # user id -> name
     for user in (User.objects.exclude(username__in=EXCLUDED_USERNAMES)
                  .values('id', 'first_name', 'last_name', 'username')):
         name = ('%s %s' % (user['first_name'], user['last_name'])).strip()
@@ -67,30 +67,30 @@ def verbatim_contributors(request,
         #    print repr(name)
         #    print repr(user['username'])
         #    print
-        _user_names[user['id']] = name
+        user_names[user['id']] = name
 
-    _language_names = {}  # language id -> name
+    language_names = {}  # language id -> name
     for language in Language.objects.all().values('id', 'fullname'):
-        _language_names[language['id']] = language['fullname']
+        language_names[language['id']] = language['fullname']
 
-    _project_names = {}  # project id -> name
+    project_names = {}  # project id -> name
     for project in (Project.objects
                     .exclude(fullname__in=EXCLUDED_PROJECT_NAMES)
                     .values('id', 'fullname')):
-        _project_names[project['id']] = project['fullname']
+        project_names[project['id']] = project['fullname']
 
     # map users to projects per language across:
     # submitters, suggesters and reviewers
-    _languages = {}
-    _tp_to_lang_id = {}
-    _tp_to_proj_id = {}
+    languages = {}
+    tp_to_lang_id = {}
+    tp_to_proj_id = {}
 
     # prepare a map of TranslationProject IDs to
     # language and project to save queries for later
     for tp in (TranslationProject.objects.all()
                .values('id', 'language_id', 'project_id')):
-        _tp_to_lang_id[tp['id']] = tp['language_id']
-        _tp_to_proj_id[tp['id']] = tp['project_id']
+        tp_to_lang_id[tp['id']] = tp['language_id']
+        tp_to_proj_id[tp['id']] = tp['project_id']
 
     for model, user_key in ((Submission, 'submitter_id'),
                             (Suggestion, 'suggester_id'),
@@ -98,30 +98,30 @@ def verbatim_contributors(request,
         for item in (model.objects.all()
                      .values('translation_project_id', user_key)
                      .distinct()):
-            lang_id = _tp_to_lang_id[item['translation_project_id']]
-            proj_id = _tp_to_proj_id[item['translation_project_id']]
+            lang_id = tp_to_lang_id[item['translation_project_id']]
+            proj_id = tp_to_proj_id[item['translation_project_id']]
             user_id = item[user_key]
             if not user_id:  # bad paste on_delete cascades
                 continue
-            if lang_id not in _languages:
-                _languages[lang_id] = {}
-            if proj_id not in _languages[lang_id]:
-                _languages[lang_id][proj_id] = set()
-            _languages[lang_id][proj_id].add(user_id)
+            if lang_id not in languages:
+                languages[lang_id] = {}
+            if proj_id not in languages[lang_id]:
+                languages[lang_id][proj_id] = set()
+            languages[lang_id][proj_id].add(user_id)
 
     # finally, turn this massive dict into a list of lists of lists
     # to be used in the template to loop over.
     # also change from IDs to real names
     contributors = []
-    for lang_id, projectsmap in _languages.items():
-        language = _language_names[lang_id]
+    for lang_id, projectsmap in languages.items():
+        language = language_names[lang_id]
         projects = []
         users = None
         for proj_id, user_ids in projectsmap.items():
-            usersset = [_user_names[x] for x in user_ids]
+            usersset = [user_names[x] for x in user_ids]
             users = sorted(usersset, lambda x, y: cmp(x.lower(), y.lower()))
             try:
-                projectname = _project_names[proj_id]
+                projectname = project_names[proj_id]
             except KeyError:
                 # some legacy broken project or excluded
                 continue
