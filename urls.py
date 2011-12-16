@@ -12,9 +12,11 @@ urlpatterns = patterns('',
                            views.verbatim_contributors,
                            name='verbatim_contributors'),
                        )
-if settings.CAN_REGISTER:
-    urlpatterns += patterns('',
-                       url(r'^accounts/register/?$',
-                           views.register,
-                           name='registration_register'),
-                       )
+
+# commenting out till we finish the self-translations of the patches
+#if settings.CAN_REGISTER:
+#    urlpatterns += patterns('',
+#                       url(r'^accounts/register/?$',
+#                           views.register,
+#                           name='registration_register'),
+#                       )
