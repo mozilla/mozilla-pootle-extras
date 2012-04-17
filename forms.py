@@ -11,11 +11,20 @@ class RegistrationForm(OriginalRegistrationForm):
     tos_license = forms.BooleanField(required=True)
     tos_rules = forms.BooleanField(required=True)
 
+    def clean_displayname(self):
+        value = self.cleaned_data['displayname'].strip()
+        if not value:
+            raise forms.ValidationError("Can't be empty")
+        return value
+
     def save(self):
         new_user = super(RegistrationForm, self).save()
         if self.cleaned_data['displayname']:
             displayname = self.cleaned_data['displayname'].strip()
-            first_name, last_name = displayname.split(None, 1)
+            try:
+                first_name, last_name = displayname.split(None, 1)
+            except:
+                first_name, last_name = displayname, u''
             new_user.first_name = first_name
             new_user.last_name = last_name
             new_user.save()
