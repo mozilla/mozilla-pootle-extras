@@ -11,6 +11,74 @@ from pootle_app.models import Suggestion
 from registration.views import register as original_register
 from .forms import RegistrationForm
 
+from django import forms
+from django.contrib.auth.forms import AuthenticationForm
+from pootle.apps.pootle_profile.forms import language_list
+from pootle.apps.pootle_profile.views import redirect_after_login
+from django.contrib import auth
+
+
+# Different from pootle_profile.forms in that this adds a
+# longer username form field
+def lang_auth_form_factory(request, **kwargs):
+
+    class LangAuthenticationForm(AuthenticationForm):
+
+        username = forms.CharField(label=_("Username"), max_length=75)
+        language = forms.ChoiceField(label=_('Interface Language'),
+                                     choices=language_list(request),
+                                     initial="", required=False)
+
+
+        def clean(self):
+            username = self.cleaned_data.get('username')
+            password = self.cleaned_data.get('password')
+
+            if username and password:
+                self.user_cache = auth.authenticate(username=username,
+                                                    password=password)
+
+                if self.user_cache is None:
+                    raise forms.ValidationError(
+                        _("Please enter a correct username and password. "
+                          "Note that both fields are case-sensitive.")
+                    )
+                elif not self.user_cache.is_active:
+                    raise forms.ValidationError(_("This account is inactive."))
+
+            return self.cleaned_data
+
+    return LangAuthenticationForm(**kwargs)
+
+# Override this in its entirety from pootle_profile.view
+# so that we can override what form instance gets used.
+def login(request):
+    """Logs the user in."""
+    if request.user.is_authenticated():
+        return redirect_after_login(request)
+    else:
+        if request.POST:
+            form = lang_auth_form_factory(request, data=request.POST)
+
+            # Do login here
+            if form.is_valid():
+                auth.login(request, form.get_user())
+
+                language = request.POST.get('language')
+                request.session['django_language'] = language
+
+                return redirect_after_login(request)
+        else:
+            form = lang_auth_form_factory(request)
+
+        context = {
+            'form': form,
+            'next': request.GET.get(auth.REDIRECT_FIELD_NAME, ''),
+            }
+
+        return render_to_response("index/login.html", context,
+                                  context_instance=RequestContext(request))
+
 
 def register(request, success_url=None,
              form_class=RegistrationForm,
@@ -25,111 +93,3 @@ def register(request, success_url=None,
       template_name=template_name,
       extra_context=extra_context
     )
-
-
-def verbatim_contributors(request,
-              template_name='mozilla_extras/verbatim-contributors.html'):
-    """render a nested list like this::
-
-        contributors = [
-          ('french', [
-            ('Hackaraus', ['Auser Name', 'username2', ...]),
-            ('Project 2', ['username1', 'usernameX', ...]),
-            ...
-            ]),
-          ('spanish', [
-            ('Project 1', ['User 1', 'User2', ...]),
-            ('Project 2', ['User 1', 'UserX', ...]),
-            ]
-
-        }
-    """
-    EXCLUDED_PROJECT_NAMES = (
-      u"Testing, please don't work here",
-    )
-
-    EXCLUDED_USERNAMES = (
-      u'sorryjusttesting',
-      u'marcoos_test',
-      u'test',
-      u'\'">,test \'">,test',
-      u'testo\'"><',
-    )
-
-    user_names = {}  # user id -> name
-    for user in (User.objects.exclude(username__in=EXCLUDED_USERNAMES)
-                 .values('id', 'first_name', 'last_name', 'username')):
-        name = ('%s %s' % (user['first_name'], user['last_name'])).strip()
-        if not name:
-            name = user['username']
-        #if 'test' in name:
-        #    print "WARNING"
-        #    print repr(name)
-        #    print repr(user['username'])
-        #    print
-        user_names[user['id']] = name
-
-    language_names = {}  # language id -> name
-    for language in Language.objects.all().values('id', 'fullname'):
-        language_names[language['id']] = language['fullname']
-
-    project_names = {}  # project id -> name
-    for project in (Project.objects
-                    .exclude(fullname__in=EXCLUDED_PROJECT_NAMES)
-                    .values('id', 'fullname')):
-        project_names[project['id']] = project['fullname']
-
-    # map users to projects per language across:
-    # submitters, suggesters and reviewers
-    languages = {}
-    tp_to_lang_id = {}
-    tp_to_proj_id = {}
-
-    # prepare a map of TranslationProject IDs to
-    # language and project to save queries for later
-    for tp in (TranslationProject.objects.all()
-               .values('id', 'language_id', 'project_id')):
-        tp_to_lang_id[tp['id']] = tp['language_id']
-        tp_to_proj_id[tp['id']] = tp['project_id']
-
-    for model, user_key in ((Submission, 'submitter_id'),
-                            (Suggestion, 'suggester_id'),
-                            (Suggestion, 'reviewer_id')):
-        for item in (model.objects.all()
-                     .values('translation_project_id', user_key)
-                     .distinct()):
-            lang_id = tp_to_lang_id[item['translation_project_id']]
-            proj_id = tp_to_proj_id[item['translation_project_id']]
-            user_id = item[user_key]
-            if not user_id:  # bad paste on_delete cascades
-                continue
-            if lang_id not in languages:
-                languages[lang_id] = {}
-            if proj_id not in languages[lang_id]:
-                languages[lang_id][proj_id] = set()
-            languages[lang_id][proj_id].add(user_id)
-
-    # finally, turn this massive dict into a list of lists of lists
-    # to be used in the template to loop over.
-    # also change from IDs to real names
-    contributors = []
-    for lang_id, projectsmap in languages.items():
-        language = language_names[lang_id]
-        projects = []
-        users = None
-        for proj_id, user_ids in projectsmap.items():
-            usersset = [user_names[x] for x in user_ids]
-            users = sorted(usersset, lambda x, y: cmp(x.lower(), y.lower()))
-            try:
-                projectname = project_names[proj_id]
-            except KeyError:
-                # some legacy broken project or excluded
-                continue
-            if users:
-                projects.append((projectname, users))
-        if projects:
-            contributors.append((language, projects))
-    contributors.sort()
-    return render_to_response(template_name,
-                              {'contributors': contributors},
-                              context_instance=RequestContext(request))

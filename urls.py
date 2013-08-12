@@ -8,9 +8,9 @@ from . import views
 
 
 urlpatterns = patterns('',
-                       url(r'^verbatim-contributors.html$',
-                           views.verbatim_contributors,
-                           name='verbatim_contributors'),
+                       url(r'^accounts/login/$',
+                           views.login,
+                           name='login'),
                        )
 
 if settings.CAN_REGISTER:
