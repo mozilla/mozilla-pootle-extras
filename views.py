@@ -29,6 +29,10 @@ def lang_auth_form_factory(request, **kwargs):
                                      choices=language_list(request),
                                      initial="", required=False)
 
+        def __init__(self, *args, **kwargs):
+            super(LangAuthenticationForm,self).__init__(*args, **kwargs)
+            # https://bugzilla.mozilla.org/show_bug.cgi?id=897042
+            self.fields['password'].widget.attrs['autocomplete'] = 'off'
 
         def clean(self):
             username = self.cleaned_data.get('username')
