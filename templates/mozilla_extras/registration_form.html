@@ -1,13 +1,19 @@
 {% extends "base.html" %}
-{% load i18n baseurl %}
+{% load i18n baseurl cache legalpages locale %}
 
-{% block title %}{{ block.super }}: {% trans "Register" %}{% endblock %}
+{% block title %}{% trans "Register" %} | {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+{{ block.super }}<li>{% trans "Register" %}</li>
+{% endblock %}
 
 {% block content %}
-<div id="register" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}">
+<div id="register" class="form" dir="{% locale_dir %}">
     <h2>{% trans "Register a New Pootle Account" %}</h2>
     <p>{% trans "If you have Mozilla LDAP account, just"%} <a href='{{ "/accounts/login/"|l }}' title="{% trans "log in" %}">{% trans "log in" %}</a> {% trans "using it."%}</p>
+    <p>{% trans "Fill in the following form to get started translating." %}</p>
     <form method="post" action="" name="registerform" id="registerform">
+    {% csrf_token %}
     {% if form.non_field_errors %}
         {{ form.non_field_errors }}
     {% endif %}
@@ -57,15 +63,15 @@
 </form>
 </div>
 
-<h2 class="loginlink">{% trans "Already have an account?" %}
+<h2 class="formlink">{% trans "Already have an account?" %}
     <a href='{{ "/accounts/login/"|l }}' title="{% trans "Log In." %}">{% trans "Log In." %}</a>
 </h2>
 {% endblock %}
 
 {% block scripts_extra %}
-  <script>
-    $(document).ready(function () {
-        $("#id_username").focus();
-    });
-  </script>
+<script>
+$(function () {
+  $("#id_username").focus();
+});
+</script>
 {% endblock scripts_extra %}
